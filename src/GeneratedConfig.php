@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types=1);
 
 namespace PHPStan\ExtensionInstaller;
 
@@ -14,15 +16,14 @@ namespace PHPStan\ExtensionInstaller;
  */
 final class GeneratedConfig
 {
+    public const EXTENSIONS = [];
 
-	public const EXTENSIONS = [];
+    public const NOT_INSTALLED = [];
 
-	public const NOT_INSTALLED = [];
+    public const PHPSTAN_VERSION_CONSTRAINT = null;
 
-	public const PHPSTAN_VERSION_CONSTRAINT = null;
-
-	private function __construct()
-	{
-	}
+    private function __construct()
+    {
+    }
 
 }
