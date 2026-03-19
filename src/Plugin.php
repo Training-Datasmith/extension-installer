@@ -154,9 +154,10 @@ final class Plugin implements PluginInterface, EventSubscriberInterface
                 continue;
             }
 
+            $cwd = getcwd();
             $absoluteInstallPath = $fs->isAbsolutePath($installPath)
                 ? $installPath
-                : getcwd() . DIRECTORY_SEPARATOR . $installPath;
+                : ($cwd !== false ? $cwd : '') . DIRECTORY_SEPARATOR . $installPath;
 
             $packageRequires = $package->getRequires();
             $phpstanConstraint = null;
