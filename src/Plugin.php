@@ -1,28 +1,23 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\ExtensionInstaller;
+declare (strict_types=1);
+namespace Php_Stan\Extension_Installer;
 
 use function array_key_exists;
 use function array_keys;
 use function class_exists;
-
 use Composer\Composer;
-use Composer\EventDispatcher\EventSubscriberInterface;
-use Composer\IO\IOInterface;
-use Composer\Plugin\PluginInterface;
+use Composer\Event_Dispatcher\Event_Subscriber_Interface;
+use Composer\IO\Io_Interface;
+use Composer\Plugin\Plugin_Interface;
 use Composer\Script\Event;
-use Composer\Script\ScriptEvents;
-use Composer\Semver\Constraint\ConstraintInterface;
-use Composer\Semver\Constraint\MultiConstraint;
+use Composer\Script\Script_Events;
+use Composer\Semver\Constraint\Constraint_Interface;
+use Composer\Semver\Constraint\Multi_Constraint;
 use Composer\Semver\Intervals;
 use Composer\Util\Filesystem;
-
 use function count;
-
 use const DIRECTORY_SEPARATOR;
-
 use function dirname;
 use function file_exists;
 use function file_put_contents;
@@ -36,10 +31,9 @@ use function sort;
 use function sprintf;
 use function strpos;
 use function var_export;
-
-final class Plugin implements PluginInterface, EventSubscriberInterface
+final class Plugin implements Plugin_Interface, Event_Subscriber_Interface
 {
-    private static string $generatedFileTemplate = <<<'PHP_WRAP'
+    private static string $generated_file_template = <<<'PHP_WRAP'
     <?php declare(strict_types = 1);
     
     namespace PHPStan\ExtensionInstaller;
@@ -65,169 +59,113 @@ final class Plugin implements PluginInterface, EventSubscriberInterface
     }
     
     PHP_WRAP;
-
-    public function activate(Composer $composer, IOInterface $io): void
+    public function activate(Composer $composer, Io_Interface $io): void
     {
         // noop
     }
-
-    public function deactivate(Composer $composer, IOInterface $io): void
+    public function deactivate(Composer $composer, Io_Interface $io): void
     {
         // noop
     }
-
-    public function uninstall(Composer $composer, IOInterface $io): void
+    public function uninstall(Composer $composer, Io_Interface $io): void
     {
         // noop
     }
-
     /**
      * @return array<string, string>
      */
-    public static function getSubscribedEvents(): array
+    public static function get_subscribed_events(): array
     {
-        return [
-            ScriptEvents::POST_INSTALL_CMD => 'process',
-            ScriptEvents::POST_UPDATE_CMD => 'process',
-        ];
+        return [Script_Events::POST_INSTALL_CMD => 'process', Script_Events::POST_UPDATE_CMD => 'process'];
     }
-
     public function process(Event $event): void
     {
-        $io = $event->getIO();
-
+        $io = $event->get_io();
         if (!file_exists(__DIR__)) {
             $io->write('<info>phpstan/extension-installer:</info> Package not found (probably scheduled for removal); extensions installation skipped.');
             return;
         }
-
-        $composer = $event->getComposer();
-        $installationManager = $composer->getInstallationManager();
-
-        $generatedConfigFilePath = __DIR__ . '/GeneratedConfig.php';
-        $oldGeneratedConfigFileHash = null;
-        if (is_file($generatedConfigFilePath)) {
-            $oldGeneratedConfigFileHash = md5_file($generatedConfigFilePath);
+        $composer = $event->get_composer();
+        $installation_manager = $composer->get_installation_manager();
+        $generated_config_file_path = __DIR__ . '/GeneratedConfig.php';
+        $old_generated_config_file_hash = null;
+        if (is_file($generated_config_file_path)) {
+            $old_generated_config_file_hash = md5_file($generated_config_file_path);
         }
-        $notInstalledPackages = [];
-        $installedPackages = [];
-        $ignoredPackages = [];
-
+        $not_installed_packages = [];
+        $installed_packages = [];
+        $ignored_packages = [];
         $data = [];
         $fs = new Filesystem();
         $ignore = [];
-
-        $packageExtra = $composer->getPackage()->getExtra();
-
-        if (isset($packageExtra['phpstan/extension-installer']['ignore'])) {
-            $ignore = $packageExtra['phpstan/extension-installer']['ignore'];
+        $package_extra = $composer->get_package()->get_extra();
+        if (isset($package_extra['phpstan/extension-installer']['ignore'])) {
+            $ignore = $package_extra['phpstan/extension-installer']['ignore'];
         }
-
-        $phpstanVersionConstraints = [];
-
-        foreach ($composer->getRepositoryManager()->getLocalRepository()->getPackages() as $package) {
-            if (
-                $package->getType() !== 'phpstan-extension'
-                && !isset($package->getExtra()['phpstan'])
-            ) {
-                if (
-                    strpos($package->getName(), 'phpstan') !== false
-                    && !in_array($package->getName(), [
-                        'phpstan/phpstan',
-                        'phpstan/phpstan-shim',
-                        'phpstan/phpdoc-parser',
-                        'phpstan/extension-installer',
-                    ], true)
-                ) {
-                    $notInstalledPackages[$package->getName()] = $package->getFullPrettyVersion();
+        $phpstan_version_constraints = [];
+        foreach ($composer->get_repository_manager()->get_local_repository()->get_packages() as $package) {
+            if ($package->get_type() !== 'phpstan-extension' && !isset($package->get_extra()['phpstan'])) {
+                if (strpos($package->get_name(), 'phpstan') !== false && !in_array($package->get_name(), ['phpstan/phpstan', 'phpstan/phpstan-shim', 'phpstan/phpdoc-parser', 'phpstan/extension-installer'], true)) {
+                    $not_installed_packages[$package->get_name()] = $package->get_full_pretty_version();
                 }
                 continue;
             }
-
-            if (in_array($package->getName(), $ignore, true)) {
-                $ignoredPackages[] = $package->getName();
+            if (in_array($package->get_name(), $ignore, true)) {
+                $ignored_packages[] = $package->get_name();
                 continue;
             }
-
-            $installPath = $installationManager->getInstallPath($package);
-            if ($installPath === null) {
+            $install_path = $installation_manager->get_install_path($package);
+            if ($install_path === null) {
                 continue;
             }
-
             $cwd = getcwd();
-            $absoluteInstallPath = $fs->isAbsolutePath($installPath)
-                ? $installPath
-                : ($cwd !== false ? $cwd : '') . DIRECTORY_SEPARATOR . $installPath;
-
-            $packageRequires = $package->getRequires();
-            $phpstanConstraint = null;
-            if (array_key_exists('phpstan/phpstan', $packageRequires)) {
-                $phpstanConstraint = $packageRequires['phpstan/phpstan']->getConstraint();
-                if ($phpstanConstraint->getLowerBound()->isZero()) {
+            $absolute_install_path = $fs->is_absolute_path($install_path) ? $install_path : ($cwd !== false ? $cwd : '') . DIRECTORY_SEPARATOR . $install_path;
+            $package_requires = $package->get_requires();
+            $phpstan_constraint = null;
+            if (array_key_exists('phpstan/phpstan', $package_requires)) {
+                $phpstan_constraint = $package_requires['phpstan/phpstan']->get_constraint();
+                if ($phpstan_constraint->get_lower_bound()->is_zero()) {
                     continue;
                 }
-                if ($phpstanConstraint->getUpperBound()->isPositiveInfinity()) {
+                if ($phpstan_constraint->get_upper_bound()->is_positive_infinity()) {
                     continue;
                 }
-                $phpstanVersionConstraints[] = $phpstanConstraint;
+                $phpstan_version_constraints[] = $phpstan_constraint;
             }
-
-            $data[$package->getName()] = [
-                'install_path' => $absoluteInstallPath,
-                'relative_install_path' => $fs->findShortestPath(dirname($generatedConfigFilePath), $absoluteInstallPath, true),
-                'extra' => $package->getExtra()['phpstan'] ?? null,
-                'version' => $package->getFullPrettyVersion(),
-                'phpstanVersionConstraint' => $phpstanConstraint !== null ? $this->constraintIntoString($phpstanConstraint) : null,
-            ];
-
-            $installedPackages[$package->getName()] = true;
+            $data[$package->get_name()] = ['install_path' => $absolute_install_path, 'relative_install_path' => $fs->find_shortest_path(dirname($generated_config_file_path), $absolute_install_path, true), 'extra' => $package->get_extra()['phpstan'] ?? null, 'version' => $package->get_full_pretty_version(), 'phpstanVersionConstraint' => $phpstan_constraint !== null ? $this->constraint_into_string($phpstan_constraint) : null];
+            $installed_packages[$package->get_name()] = true;
         }
-
-        $phpstanVersionConstraint = null;
-        if (count($phpstanVersionConstraints) > 0 && class_exists(Intervals::class)) {
-            if (count($phpstanVersionConstraints) === 1) {
-                $multiConstraint = $phpstanVersionConstraints[0];
+        $phpstan_version_constraint = null;
+        if (count($phpstan_version_constraints) > 0 && class_exists(Intervals::class)) {
+            if (count($phpstan_version_constraints) === 1) {
+                $multi_constraint = $phpstan_version_constraints[0];
             } else {
-                $multiConstraint = new MultiConstraint($phpstanVersionConstraints);
+                $multi_constraint = new Multi_Constraint($phpstan_version_constraints);
             }
-            $phpstanVersionConstraint = $this->constraintIntoString(Intervals::compactConstraint($multiConstraint));
+            $phpstan_version_constraint = $this->constraint_into_string(Intervals::compact_constraint($multi_constraint));
         }
-
         ksort($data);
-        ksort($installedPackages);
-        ksort($notInstalledPackages);
-        sort($ignoredPackages);
-
-        $generatedConfigFileContents = sprintf(self::$generatedFileTemplate, var_export($data, true), var_export($notInstalledPackages, true), var_export($phpstanVersionConstraint, true));
-        file_put_contents($generatedConfigFilePath, $generatedConfigFileContents);
+        ksort($installed_packages);
+        ksort($not_installed_packages);
+        sort($ignored_packages);
+        $generated_config_file_contents = sprintf(self::$generated_file_template, var_export($data, true), var_export($not_installed_packages, true), var_export($phpstan_version_constraint, true));
+        file_put_contents($generated_config_file_path, $generated_config_file_contents);
         $io->write('<info>phpstan/extension-installer:</info> Extensions installed');
-
-        if ($oldGeneratedConfigFileHash === md5($generatedConfigFileContents)) {
+        if ($old_generated_config_file_hash === md5($generated_config_file_contents)) {
             return;
         }
-
-        foreach (array_keys($installedPackages) as $name) {
+        foreach (array_keys($installed_packages) as $name) {
             $io->write(sprintf('> <info>%s:</info> installed', $name));
         }
-
-        foreach (array_keys($notInstalledPackages) as $name) {
+        foreach (array_keys($not_installed_packages) as $name) {
             $io->write(sprintf('> <comment>%s:</comment> not supported', $name));
         }
-
-        foreach ($ignoredPackages as $name) {
+        foreach ($ignored_packages as $name) {
             $io->write(sprintf('> <comment>%s:</comment> ignored', $name));
         }
     }
-
-    private function constraintIntoString(ConstraintInterface $constraint): string
+    private function constraint_into_string(Constraint_Interface $constraint): string
     {
-        return sprintf(
-            '%s%s, %s%s',
-            $constraint->getLowerBound()->isInclusive() ? '>=' : '>',
-            $constraint->getLowerBound()->getVersion(),
-            $constraint->getUpperBound()->isInclusive() ? '<=' : '<',
-            $constraint->getUpperBound()->getVersion(),
-        );
+        return sprintf('%s%s, %s%s', $constraint->get_lower_bound()->is_inclusive() ? '>=' : '>', $constraint->get_lower_bound()->get_version(), $constraint->get_upper_bound()->is_inclusive() ? '<=' : '<', $constraint->get_upper_bound()->get_version());
     }
-
 }

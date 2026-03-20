@@ -1,8 +1,7 @@
 <?php
 
-declare(strict_types=1);
-
-namespace PHPStan\ExtensionInstaller;
+declare (strict_types=1);
+namespace Php_Stan\Extension_Installer;
 
 /**
  * This is a stub class: it is in place only for scenarios where Composer
@@ -14,16 +13,12 @@ namespace PHPStan\ExtensionInstaller;
  *
  * @internal
  */
-final class GeneratedConfig
+final class Generated_Config
 {
     public const EXTENSIONS = [];
-
     public const NOT_INSTALLED = [];
-
     public const PHPSTAN_VERSION_CONSTRAINT = null;
-
     private function __construct()
     {
     }
-
 }
