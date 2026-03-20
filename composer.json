@@ -5,7 +5,10 @@
     "license": [
         "MIT"
     ],
-    "keywords": ["dev", "static analysis"],
+    "keywords": [
+        "dev",
+        "static analysis"
+    ],
     "require": {
         "php": "^7.4 || ^8.0",
         "composer-plugin-api": "^2.0",
@@ -27,7 +30,7 @@
     },
     "autoload": {
         "psr-4": {
-            "PHPStan\\ExtensionInstaller\\": "src/"
+            "PHP_Stan\\Extension_Installer\\": "src/"
         }
     }
 }
