@@ -8,6 +8,7 @@ if (!is_file($vendorAutoload)) {
 
 require $vendorAutoload;
 
+// The suite mutates src/GeneratedConfig.php; parallel PHPUnit workers would race on that path.
 $generatedConfigPath = dirname(__DIR__) . '/src/GeneratedConfig.php';
 $stubContents = file_get_contents($generatedConfigPath);
 if ($stubContents === false) {

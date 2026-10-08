@@ -77,7 +77,7 @@ final class PluginHarness
 	}
 
 	/**
-	 * @return array{io: BufferIO, config: array{EXTENSIONS: array<string, mixed>, NOT_INSTALLED: array<string, string>, PHPSTAN_VERSION_CONSTRAINT: string|null}}
+	 * @return array{io: BufferIO}
 	 */
 	public function runProcess(): array
 	{

@@ -60,8 +60,8 @@ final class InstallPathTest extends TestCase
 	public function testRelativeInstallPathIsAnchoredToCwd(): void
 	{
 		$relativeInstallPath = 'tmp/phpunit-fixtures-' . uniqid('', true) . '/vendor/acme/ext';
-		$this->fixtureDirectory = $this->projectRoot . DIRECTORY_SEPARATOR . dirname($relativeInstallPath, 2);
-		mkdir($this->fixtureDirectory . DIRECTORY_SEPARATOR . 'vendor/acme/ext', 0777, true);
+		$this->fixtureDirectory = $this->projectRoot . DIRECTORY_SEPARATOR . dirname($relativeInstallPath, 3);
+		mkdir($this->projectRoot . DIRECTORY_SEPARATOR . $relativeInstallPath, 0777, true);
 
 		chdir($this->projectRoot);
 
@@ -81,8 +81,11 @@ final class InstallPathTest extends TestCase
 		self::assertSame($expectedAbsolute, $entry['install_path']);
 
 		$generatedConfigDir = $this->projectRoot . '/src';
+		$expectedRealpath = realpath($expectedAbsolute);
+		self::assertIsString($expectedRealpath);
 		$resolved = realpath($generatedConfigDir . '/' . $entry['relative_install_path']);
-		self::assertSame(realpath($expectedAbsolute), $resolved);
+		self::assertIsString($resolved);
+		self::assertSame($expectedRealpath, $resolved);
 	}
 
 	public function testAbsoluteInstallPathIsStoredUnchanged(): void
