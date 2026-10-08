@@ -13,7 +13,7 @@ use Composer\Repository\RepositoryManager;
 use Composer\Script\Event;
 use Composer\Script\ScriptEvents;
 use PHPStan\ExtensionInstaller\Plugin;
-use PHPUnit\Framework\MockObject\Generator;
+use PHPUnit\Framework\TestCase as PhpUnitTestCase;
 use function array_merge;
 use function array_key_exists;
 
@@ -39,11 +39,16 @@ final class PluginHarness
 		'type' => 'project',
 	];
 
+	/** @var PhpUnitTestCase */
+	private $mockTestCase;
+
 	public function __construct(string $projectRoot)
 	{
 		$this->projectRoot = $projectRoot;
 		$this->loader = new ArrayLoader();
 		$this->localRepository = new InstalledArrayRepository();
+		$this->mockTestCase = new class extends PhpUnitTestCase {
+		};
 	}
 
 	/**
@@ -102,14 +107,10 @@ final class PluginHarness
 
 	private function createRepositoryManagerStub(): RepositoryManager
 	{
-		$generator = new Generator();
-		$stub = $generator->getMock(
-			RepositoryManager::class,
-			['getLocalRepository'],
-			[],
-			'',
-			false
-		);
+		$stub = $this->mockTestCase->getMockBuilder(RepositoryManager::class)
+			->disableOriginalConstructor()
+			->onlyMethods(['getLocalRepository'])
+			->getMock();
 		$stub->method('getLocalRepository')->willReturn($this->localRepository);
 
 		return $stub;
@@ -118,14 +119,10 @@ final class PluginHarness
 	private function createInstallationManagerMock(): InstallationManager
 	{
 		$paths = $this->installPaths;
-		$generator = new Generator();
-		$installationManager = $generator->getMock(
-			InstallationManager::class,
-			['getInstallPath'],
-			[],
-			'',
-			false
-		);
+		$installationManager = $this->mockTestCase->getMockBuilder(InstallationManager::class)
+			->disableOriginalConstructor()
+			->onlyMethods(['getInstallPath'])
+			->getMock();
 		$installationManager->method('getInstallPath')->willReturnCallback(
 			static function ($package) use ($paths) {
 				if (!$package instanceof PackageInterface) {
