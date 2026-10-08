@@ -9,8 +9,10 @@ use Composer\Plugin\PluginInterface;
 use Composer\Script\Event;
 use Composer\Script\ScriptEvents;
 use Composer\Semver\Constraint\ConstraintInterface;
+use Composer\Semver\Constraint\MatchNoneConstraint;
 use Composer\Semver\Constraint\MultiConstraint;
 use Composer\Semver\Intervals;
+use Composer\Semver\Interval;
 use Composer\Util\Filesystem;
 use function array_key_exists;
 use function array_keys;
@@ -155,15 +157,16 @@ PHP;
 
 			$packageRequires = $package->getRequires();
 			$phpstanConstraint = null;
+			$phpstanConstraintString = null;
 			if (array_key_exists('phpstan/phpstan', $packageRequires)) {
 				$phpstanConstraint = $packageRequires['phpstan/phpstan']->getConstraint();
-				if ($phpstanConstraint->getLowerBound()->isZero()) {
-					continue;
+				if (
+					!$phpstanConstraint->getLowerBound()->isZero()
+					&& !$phpstanConstraint->getUpperBound()->isPositiveInfinity()
+				) {
+					$phpstanVersionConstraints[] = $phpstanConstraint;
+					$phpstanConstraintString = $this->constraintIntoString($phpstanConstraint);
 				}
-				if ($phpstanConstraint->getUpperBound()->isPositiveInfinity()) {
-					continue;
-				}
-				$phpstanVersionConstraints[] = $phpstanConstraint;
 			}
 
 			$data[$package->getName()] = [
@@ -171,7 +174,7 @@ PHP;
 				'relative_install_path' => $fs->findShortestPath(dirname($generatedConfigFilePath), $absoluteInstallPath, true),
 				'extra' => $package->getExtra()['phpstan'] ?? null,
 				'version' => $package->getFullPrettyVersion(),
-				'phpstanVersionConstraint' => $phpstanConstraint !== null ? $this->constraintIntoString($phpstanConstraint) : null,
+				'phpstanVersionConstraint' => $phpstanConstraintString,
 			];
 
 			$installedPackages[$package->getName()] = true;
@@ -215,12 +218,34 @@ PHP;
 
 	private function constraintIntoString(ConstraintInterface $constraint): string
 	{
+		if ($constraint instanceof MatchNoneConstraint) {
+			return '>0.0.0.0-dev, <0.0.0.0-dev';
+		}
+
+		$numericIntervals = Intervals::get($constraint)['numeric'];
+		if (count($numericIntervals) === 0) {
+			return '>0.0.0.0-dev, <0.0.0.0-dev';
+		}
+
+		$rangeStrings = [];
+		foreach ($numericIntervals as $interval) {
+			$rangeStrings[] = $this->intervalIntoString($interval);
+		}
+
+		return implode(' || ', $rangeStrings);
+	}
+
+	private function intervalIntoString(Interval $interval): string
+	{
+		$start = $interval->getStart();
+		$end = $interval->getEnd();
+
 		return sprintf(
 			'%s%s, %s%s',
-			$constraint->getLowerBound()->isInclusive() ? '>=' : '>',
-			$constraint->getLowerBound()->getVersion(),
-			$constraint->getUpperBound()->isInclusive() ? '<=' : '<',
-			$constraint->getUpperBound()->getVersion(),
+			$start->getOperator(),
+			$start->getVersion(),
+			$end->getOperator(),
+			$end->getVersion(),
 		);
 	}
 

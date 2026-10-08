@@ -1,5 +1,5 @@
 .PHONY: check
-check: lint cs phpstan
+check: lint cs phpstan test
 
 .PHONY: lint
 lint:
@@ -23,3 +23,7 @@ cs-fix:
 .PHONY: phpstan
 phpstan:
 	php vendor/bin/phpstan
+
+.PHONY: test
+test:
+	php vendor/bin/phpunit
